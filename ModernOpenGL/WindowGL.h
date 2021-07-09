@@ -8,16 +8,31 @@
 class Window
 {
 protected:
-	HWND wndHndl;
+	HWND hWnd;
 	long userAreaWidth;
 	long userAreaHeight;
 
 public:
-	Window() :wndHndl(NULL) {};
+	Window() :hWnd(NULL) {};
 	LRESULT WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 	bool Initialize(HINSTANCE handle, POINT position, POINT size);
 	WPARAM Run();
-} window;
+};
+
+class WindowGL:public Window
+{
+private:
+	HGLRC hRC; //rendering context handle
+	HDC hDC; //GDI device private context
+	bool SetPixelsFormat(HDC hDC) const;
+	bool InitializeWGL(HWND hWnd);
+	void DeleteWGL();
+
+	void InfoTitle(HWND hWnd);
+public:
+	WindowGL() :Window(), hRC(NULL), hDC(NULL) {};
+	LRESULT WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
+}window;
 
 #endif // !OPENGL_H
 
