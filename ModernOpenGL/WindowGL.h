@@ -7,6 +7,9 @@
 
 class Window
 {
+private:
+	bool ChangeResolution(long width, long heigth, long colorDepth=32) const;
+
 protected:
 	HWND hWnd;
 	long userAreaWidth;
@@ -15,7 +18,7 @@ protected:
 public:
 	Window() :hWnd(NULL) {};
 	LRESULT WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
-	bool Initialize(HINSTANCE handle, POINT position, POINT size);
+	bool Initialize(HINSTANCE handle, POINT position, POINT size, bool fullScreen=true, bool resChange=false);
 	WPARAM Run();
 };
 
@@ -27,8 +30,12 @@ private:
 	bool SetPixelsFormat(HDC hDC) const;
 	bool InitializeWGL(HWND hWnd);
 	void DeleteWGL();
-
 	void InfoTitle(HWND hWnd);
+
+protected:
+	void SceneSetup(bool isometric=false);
+	void DrawScene();
+
 public:
 	WindowGL() :Window(), hRC(NULL), hDC(NULL) {};
 	LRESULT WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);

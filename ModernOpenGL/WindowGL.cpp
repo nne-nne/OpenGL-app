@@ -42,7 +42,7 @@ LRESULT Window::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	return 0L;
 }
 
-bool Window::Initialize(HINSTANCE hApp, POINT position, POINT size)
+bool Window::Initialize(HINSTANCE hApp, POINT position, POINT size, bool fullScreen, bool resChange)
 {
 	char name[] = "Adam Leczkowski OpenGL app";
 	WNDCLASSEX wc;
@@ -62,8 +62,31 @@ bool Window::Initialize(HINSTANCE hApp, POINT position, POINT size)
 	//registration
 	if (RegisterClassEx(&wc) == 0) return false;
 
+	//window settings
+	DWORD windowStyle = WS_OVERLAPPEDWINDOW;
+
+	if (fullScreen)
+	{
+		windowStyle = WS_POPUP;
+		position.x = 0;
+		position.y = 0;
+		if (resChange)
+		{
+			size.x = 1024;
+			size.y = 768;
+			if (!ChangeResolution(size.x, size.y)) return false;
+		}
+		else
+		{
+			RECT screenSize;
+			GetWindowRect(GetDesktopWindow(), &screenSize);
+			size.x = screenSize.right - screenSize.left;
+			size.y = screenSize.bottom - screenSize.top;
+		}
+	}
+
 	//window creation
-	hWnd = CreateWindow(name, name, WS_OVERLAPPEDWINDOW, position.x, position.y, size.x, size.y,
+	hWnd = CreateWindow(name, name, windowStyle, position.x, position.y, size.x, size.y,
 		NULL, NULL, hApp, NULL);
 	if (hWnd == NULL) return false;
 
@@ -129,7 +152,15 @@ LRESULT WindowGL::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			MessageBox(NULL, "Getting rendering context failed", "OpenGL app", MB_OK | MB_ICONERROR);
 			return EXIT_FAILURE;
 		}
+		SceneSetup();
 		InfoTitle(hWnd);
+		break;
+	case WM_SIZE:
+		SceneSetup();
+		break;
+	case WM_PAINT:
+		DrawScene();
+		ValidateRect(hWnd, NULL);
 		break;
 	case WM_DESTROY:
 		DeleteWGL();
@@ -152,4 +183,62 @@ void WindowGL::InfoTitle(HWND hWnd)
 	strcat_s(buffer, " | ");
 	strcat_s(buffer, (char*)renderer);
 	SetWindowText(hWnd, buffer);
+}
+
+void WindowGL::SceneSetup(bool isometric)
+{
+	glViewport(0, 0, userAreaWidth, userAreaHeight);
+	glMatrixMode(GL_PROJECTION); //switch to projection matrix
+	glLoadIdentity();
+	float ratio = userAreaHeight / (float)userAreaWidth;
+	if (!isometric) //frustum clipping
+		glFrustum(-1.0f, 1.0f, ratio * -1.0f, ratio * 1.0f, 1.0f, 10.0f);
+	else
+		glOrtho(-1.0f, 1.0f, ratio * -1.0f, ratio * 1.0f, 1.0f, 10.0f);
+	glMatrixMode(GL_MODELVIEW); //back to model view matrix
+	glEnable(GL_DEPTH_TEST); //active z-buffer
+}
+
+void WindowGL::DrawScene()
+{
+	const float x0 = 1.0f;
+	const float y0 = 1.0f;
+	const float z0 = 1.0f;
+
+	//preparing buffers
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); //clearing frame buffer and depth buffer
+	glClearColor(0.0f, 0.0f, 0.0f, 1.0f); //background
+	glLoadIdentity(); //model-view matrix = identity matrix
+
+	glTranslatef(1.0f, 0.0f, -3.0f); //move eye from centre of scene
+	glRotatef(35.26f, 1.0f, 0.0f, 0.0f);
+	glRotatef(45.0f, 0.0f, 1.0f, 0.0f);
+	/*gluLookAt(
+		-1.0f, 1.0f, 1.0f,
+		0.0f, 0.0f, 0.0f,
+		0.0f, 1.0f, 0.0f);*/
+	
+
+	glBegin(GL_TRIANGLES); //drawing triangle
+	glColor4f(1.0f, 1.0f, 0.0f, 1.0f);
+	glVertex3f(-x0, -y0, 0.0f);
+	glColor4f(0.0f, 1.0f, 1.0f, 1.0f);
+	glVertex3f(x0, -y0, 0.0f);
+	glColor4f(1.0f, 0.0f, 1.0f, 1.0f);
+	glVertex3f(0, y0, 0.0f);
+	glEnd();
+
+	SwapBuffers(hDC); //from buffer to screen
+}
+
+bool Window::ChangeResolution(long width, long height, long colorDepth) const
+{
+	DEVMODE dmScreenSettings;
+	memset(&dmScreenSettings, 0, sizeof(dmScreenSettings));
+	dmScreenSettings.dmSize = sizeof(dmScreenSettings);
+	dmScreenSettings.dmPelsWidth = width;
+	dmScreenSettings.dmPelsHeight = height;
+	dmScreenSettings.dmBitsPerPel = colorDepth;
+	dmScreenSettings.dmFields = DM_BITSPERPEL | DM_PELSWIDTH | DM_PELSHEIGHT;
+	return ChangeDisplaySettings(&dmScreenSettings, CDS_FULLSCREEN) == DISP_CHANGE_SUCCESSFUL;
 }
